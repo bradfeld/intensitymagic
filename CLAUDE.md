@@ -4,9 +4,16 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project Overview
 
-**IntensityMagic** is a simple landing page for Intensity Magic company. This project uses the MedicareMagic template but is configured as a lightweight landing page rather than a full SaaS application.
+**IntensityMagic** is a simple landing page for Intensity Magic company.
 
-**Note**: Since this is a landing page, many template features (Clerk authentication, Supabase database, OpenAI integration) are optional and may not be needed. You can remove these dependencies if they're not required.
+**Simplified Stack**: This project uses a minimal configuration:
+
+- Next.js 15 for the framework
+- Tailwind CSS + shadcn/ui for styling
+- Linear for task management (team: intensitymagic)
+- No authentication (Clerk removed)
+- No database (Supabase removed)
+- No AI features (OpenAI removed)
 
 ## Commands
 
@@ -50,24 +57,11 @@ npm run linear:complete         # Mark issue complete
 - Reference Linear for strategic task tracking
 - Create "MASTER PLAN" summaries for complex multi-step projects
 
-## Database Schema Awareness (MANDATORY)
-
-**At the start of ANY new conversation**, verify the current database schema:
-
-1. Read `supabase/migrations/` for latest migrations
-2. Review schema documentation (check `docs/db/` for schema baselines)
-3. If types seem outdated, regenerate with Supabase CLI
-4. Verify schema understanding with user if unclear
-
-**Common issue**: Code may reference fields that don't exist, or types may be stale. Always verify before assuming schema structure from old context.
-
 ## Tech Stack
 
 - **Framework**: Next.js 15 (App Router only)
-- **Authentication**: Clerk with Supabase JWT integration
-- **Database**: Supabase PostgreSQL with RLS
-- **AI**: OpenAI GPT-4
 - **Styling**: Tailwind CSS + shadcn/ui
+- **Task Management**: Linear (team: intensitymagic)
 - **Deployment**: Vercel
 
 ## Architecture Quick Reference
@@ -76,11 +70,9 @@ npm run linear:complete         # Mark issue complete
 
 ### Key Patterns
 
-- **Supabase**: Always use `SupabaseClients.authenticated()` factory, never `createClient()` directly → See `src/lib/CLAUDE.md`
-- **Validation**: Use `useValidatedForm` with Zod schemas → See `src/lib/CLAUDE.md`
-- **API Responses**: Use `apiSuccess()` and `apiError()` helpers → See `docs/standards/API_STANDARDS.md`
-- **Logging**: Use `logger.error/warn/info()` with context prefixes → See `src/lib/CLAUDE.md`
+- **Validation**: Use `useValidatedForm` with Zod schemas for forms → See `src/lib/CLAUDE.md`
 - **TypeScript**: Strict mode with `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` → See `docs/standards/TYPESCRIPT_STRICT_MODE.md`
+- **Styling**: Use Tailwind CSS classes and shadcn/ui components
 
 ## Directory Structure & Context
 
@@ -89,10 +81,9 @@ src/
 ├── app/              # Next.js App Router → See src/app/CLAUDE.md
 ├── components/       # UI components → See src/components/CLAUDE.md
 └── lib/              # Core utilities → See src/lib/CLAUDE.md
-    ├── supabase/     # Database clients (use factory pattern)
     ├── validation/   # Zod schemas
     ├── types/        # TypeScript definitions
-    └── services/     # Business logic
+    └── utils/        # Helper functions
 ```
 
 **Read the directory-specific CLAUDE.md file when working in that area.**
@@ -150,15 +141,12 @@ npm run verify:production   # Verify after merge
 ## Common Pitfalls
 
 1. **Hardcoded localhost URLs** - Use `request.url` origin
-2. **Direct Supabase client creation** - Use SupabaseClients factory
-3. **Missing type narrowing** - Array access needs null checks
-4. **Forgotten build validation** - Always `npm run build` before deploying
-5. **Stale schema assumptions** - Verify schema at conversation start
+2. **Missing type narrowing** - Array access needs null checks
+3. **Forgotten build validation** - Always `npm run build` before deploying
 
 ## Troubleshooting
 
 **Port 3000 in use**: `lsof -ti:3000 | xargs kill -9 && npm run dev`
-**TypeScript errors after schema change**: Regenerate types with Supabase CLI
 **Stale build**: `rm -rf .next && npm run build`
 
 For detailed troubleshooting, see `docs/TROUBLESHOOTING.md` (if exists) or relevant standard file.

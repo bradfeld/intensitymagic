@@ -11,14 +11,10 @@
   },
   "environments": {
     "preview": {
-      "branch": "preview",
-      "supabaseProjectRef": "YOUR_PREVIEW_PROJECT_REF",
-      "clerkInstance": "preview"
+      "branch": "preview"
     },
     "production": {
-      "branch": "main",
-      "supabaseProjectRef": "YOUR_PRODUCTION_PROJECT_REF",
-      "clerkInstance": "production"
+      "branch": "main"
     }
   }
 }
