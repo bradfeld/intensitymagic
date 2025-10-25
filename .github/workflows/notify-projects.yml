@@ -1,0 +1,50 @@
+name: Notify Projects of Updates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.claude/**'
+      - 'docs/standards/**'
+      - 'docs/UNIFIED_DEVELOPMENT_STANDARDS.md'
+      - 'docs/CLAUDE.md'
+      - 'docs/templates/**'
+      - 'docs/ops/**'
+      - 'src/app/CLAUDE.md'
+      - 'src/lib/CLAUDE.md'
+      - 'src/components/CLAUDE.md'
+      - 'scripts/**'
+      - '.github/workflows/**'
+      - '.husky/**'
+      - 'CLAUDE.md'
+
+jobs:
+  notify-medicaremagic:
+    name: 🔔 Notify medicaremagic
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📢 Trigger sync in medicaremagic
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.MEDICAREMAGIC_PAT }}
+          repository: bradfeld/medicaremagic
+          event-type: template-updated
+          client-payload: |
+            {
+              "ref": "${{ github.ref }}",
+              "sha": "${{ github.sha }}",
+              "repository": "${{ github.repository }}"
+            }
+
+  # Add more projects as they're created
+  # notify-authormagic:
+  #   name: 🔔 Notify authormagic
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: 📢 Trigger sync in authormagic
+  #       uses: peter-evans/repository-dispatch@v2
+  #       with:
+  #         token: ${{ secrets.AUTHORMAGIC_PAT }}
+  #         repository: bradfeld/authormagic
+  #         event-type: template-updated

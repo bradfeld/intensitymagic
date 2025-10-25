@@ -1,0 +1,92 @@
+name: 🔧 Maintenance
+
+on:
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  dependency-audit:
+    name: 📦 Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🔒 Full security audit
+        run: npm audit --audit-level=low
+
+      - name: 📊 Generate dependency report
+        run: |
+          echo "## 📦 Dependency Audit Report" > audit-report.md
+          echo "" >> audit-report.md
+          echo "**Date:** $(date)" >> audit-report.md
+          echo "" >> audit-report.md
+          echo "### Security Vulnerabilities:" >> audit-report.md
+          npm audit --audit-level=low --json | jq -r '.vulnerabilities | to_entries[] | "- **\(.key)**: \(.value.severity) - \(.value.title)"' >> audit-report.md || echo "No vulnerabilities found" >> audit-report.md
+          echo "" >> audit-report.md
+          echo "### Outdated Packages:" >> audit-report.md
+          npm outdated --json | jq -r 'to_entries[] | "- **\(.key)**: \(.value.current) → \(.value.latest)"' >> audit-report.md || echo "All packages are up to date" >> audit-report.md
+
+      - name: 📝 Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-report
+          path: audit-report.md
+          retention-days: 30
+
+  typescript-check:
+    name: 🔍 TypeScript Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🔍 TypeScript strict check
+        run: npm run type-check
+
+      - name: 📊 TypeScript compiler diagnostics
+        run: |
+          echo "## 🔍 TypeScript Health Report" > ts-report.md
+          echo "" >> ts-report.md
+          echo "**Date:** $(date)" >> ts-report.md
+          echo "" >> ts-report.md
+          echo "### Compiler Configuration:" >> ts-report.md
+          echo '```json' >> ts-report.md
+          cat tsconfig.json >> ts-report.md
+          echo '```' >> ts-report.md
+          echo "" >> ts-report.md
+          echo "### Type Check Results:" >> ts-report.md
+          if npm run type-check; then
+            echo "✅ All type checks passed!" >> ts-report.md
+          else
+            echo "❌ Type check issues found - see CI logs" >> ts-report.md
+          fi
+
+      - name: 📝 Upload TypeScript report
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-health-report
+          path: ts-report.md
+          retention-days: 30

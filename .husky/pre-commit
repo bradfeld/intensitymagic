@@ -1,0 +1,45 @@
+# Auto-format staged files with Prettier
+echo "🎨 Formatting staged files with Prettier..."
+npx prettier --write --ignore-unknown $(git diff --cached --name-only --diff-filter=ACM | tr '\n' ' ')
+git add -u
+
+# Secret Detection with Gitleaks
+echo "🔍 Scanning staged files for secrets..."
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$STAGED_FILES" ]; then
+  echo "✅ No files staged for commit"
+  exit 0
+fi
+
+# Create temporary directory for gitleaks scan
+TEMP_DIR=$(mktemp -d)
+trap "rm -rf $TEMP_DIR" EXIT
+
+# Copy staged files to temp directory maintaining structure
+for file in $STAGED_FILES; do
+  mkdir -p "$TEMP_DIR/$(dirname "$file")"
+  git show :"$file" > "$TEMP_DIR/$file"
+done
+
+# Scan the temp directory
+gitleaks detect --source "$TEMP_DIR" --verbose --redact --no-git
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Gitleaks detected potential secrets in your staged files!"
+  echo ""
+  echo "To fix this:"
+  echo "1. Remove the secret from the file"
+  echo "2. Add it to .env.local (never committed)"
+  echo "3. If it's a false positive, update .gitleaks.toml allowlist"
+  echo ""
+  echo "To bypass this check (NOT RECOMMENDED):"
+  echo "  git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+echo "✅ No secrets detected - proceeding with commit"

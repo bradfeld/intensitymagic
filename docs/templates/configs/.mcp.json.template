@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "linear": {
+      "type": "sse",
+      "url": "https://mcp.linear.app/sse"
+    },
+    "vercel": {
+      "type": "sse",
+      "url": "https://mcp.vercel.com/sse"
+    },
+    "supabase": {
+      "type": "sse",
+      "url": "https://mcp.supabase.com/sse"
+    }
+  }
+}

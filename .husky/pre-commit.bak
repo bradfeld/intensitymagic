@@ -1,0 +1,17 @@
+# Run TypeScript type checking
+echo "🔍 Running TypeScript type check..."
+npm run type-check
+
+# Run ESLint
+echo "🔍 Running ESLint..."
+npm run lint
+
+# Auto-format code with Prettier
+echo "🔍 Auto-formatting code with Prettier..."
+npm run format
+
+# Verify formatting is correct
+echo "🔍 Verifying code formatting..."
+npm run format:check
+
+echo "✅ Pre-commit checks passed!"

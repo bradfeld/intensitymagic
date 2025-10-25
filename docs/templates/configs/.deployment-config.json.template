@@ -1,0 +1,39 @@
+{
+  "projectName": "{{PROJECT_NAME}}",
+  "github": {
+    "owner": "{{GITHUB_OWNER}}",
+    "repo": "{{GITHUB_REPO}}"
+  },
+  "vercel": {
+    "projectName": "{{VERCEL_PROJECT_NAME}}",
+    "team": "{{VERCEL_TEAM}}",
+    "previewUrl": "https://{{VERCEL_PROJECT_NAME}}-git-preview-{{VERCEL_TEAM}}.vercel.app",
+    "productionUrl": "https://{{PRODUCTION_DOMAIN}}"
+  },
+  "environments": {
+    "local": {
+      "appUrl": "http://localhost:3000",
+      "supabaseUrl": "http://localhost:54340",
+      "supabaseProjectRef": "local-docker",
+      "clerkInstance": "development"
+    },
+    "preview": {
+      "branch": "preview",
+      "appUrl": "https://{{VERCEL_PROJECT_NAME}}-git-preview-{{VERCEL_TEAM}}.vercel.app",
+      "supabaseUrl": "https://{{SUPABASE_PREVIEW_REF}}.supabase.co",
+      "supabaseProjectRef": "{{SUPABASE_PREVIEW_REF}}",
+      "clerkInstance": "development"
+    },
+    "production": {
+      "branch": "main",
+      "appUrl": "https://{{PRODUCTION_DOMAIN}}",
+      "supabaseUrl": "https://{{SUPABASE_PRODUCTION_REF}}.supabase.co",
+      "supabaseProjectRef": "{{SUPABASE_PRODUCTION_REF}}",
+      "clerkInstance": "production"
+    }
+  },
+  "database": {
+    "isolation": "complete",
+    "description": "Each environment has completely isolated database instance with no shared data"
+  }
+}

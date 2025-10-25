@@ -1,0 +1,57 @@
+name: StackHawk Scan (Manual)
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: 'Runs API-only scan against local Next.js app on the runner'
+        required: false
+        default: 'Manual run'
+
+jobs:
+  hawkscan:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+      - name: Pull latest HawkScan image
+        run: docker pull stackhawk/hawkscan:latest
+      - name: Start app
+        run: npm start &
+      - name: Wait for app
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:3000 > /dev/null; then echo "App is up"; exit 0; fi; sleep 2; done; echo "App did not start"; exit 1
+      - name: Run StackHawk (Docker)
+        env:
+          HAWK_API_KEY: ${{ secrets.HAWK_API_KEY }}
+          HAWK_APPLICATION_ID: ${{ secrets.HAWK_APPLICATION_ID }}
+          HAWK_TEST_USERNAME: ${{ secrets.HAWK_TEST_USERNAME }}
+          HAWK_TEST_PASSWORD: ${{ secrets.HAWK_TEST_PASSWORD }}
+        run: |
+          docker run --rm --network host \
+            -v ${{ github.workspace }}:/hawk:rw \
+            -v ${{ github.workspace }}/.hawk:/root/.hawk \
+            -e API_KEY=${{ secrets.HAWK_API_KEY }} \
+            -e HAWK_APPLICATION_ID=${{ secrets.HAWK_APPLICATION_ID }} \
+            -e HAWK_TEST_USERNAME=${{ secrets.HAWK_TEST_USERNAME }} \
+            -e HAWK_TEST_PASSWORD=${{ secrets.HAWK_TEST_PASSWORD }} \
+            -t stackhawk/hawkscan:latest stackhawk-api.yml
+      - name: Upload HawkScan JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hawkscan-json
+          path: .hawk/logs/hawkscan.log

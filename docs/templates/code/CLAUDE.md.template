@@ -1,0 +1,216 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+[PROJECT_NAME] is a [BRIEF_DESCRIPTION]. The platform [KEY_FEATURES].
+
+## Commands
+
+### Development
+```bash
+npm run dev                     # Start dev server on localhost:3000 (ONLY port 3000)
+npm run restart                 # Clean restart dev server
+npm run type-check:watch        # Real-time TypeScript error detection
+```
+
+### Testing & Validation
+```bash
+npm run validate-production     # Complete validation (type-check + lint + build)
+npm run build                   # Build for production (MUST pass before deploying)
+npm run test                    # Run tests
+```
+
+### Code Quality
+```bash
+npm run lint                    # ESLint validation
+npm run lint:fix                # Auto-fix ESLint issues
+npm run format                  # Format with Prettier
+```
+
+## Architecture Overview
+
+### Tech Stack
+- **Framework**: Next.js 15 (App Router only, never Pages Router)
+- **Authentication**: Clerk with Supabase JWT integration
+- **Database**: Supabase PostgreSQL with Row Level Security (RLS)
+- **AI**: [AI_PROVIDER] (if applicable)
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **Deployment**: Vercel with automated CI/CD
+
+### Key Architectural Patterns
+
+#### 1. Supabase Client Factory Pattern
+All database access uses `SupabaseClients` factory:
+
+```typescript
+// User operations (respects RLS)
+const supabase = await SupabaseClients.authenticated()
+
+// Admin operations (bypasses RLS)
+const supabase = SupabaseClients.admin()
+
+// Public data access
+const supabase = await SupabaseClients.public()
+
+// Client-side operations (singleton)
+const supabase = SupabaseClients.browser()
+```
+
+**Decision tree for which client to use:**
+- `authenticated()` - **Default** for user operations
+- `admin()` - **Only** for webhooks, system operations, admin endpoints
+- `public()` - Public pages, health checks
+- `browser()` - Client-side React components
+
+#### 2. Validation System
+Forms use centralized validation with Zod schemas:
+
+```typescript
+const { values, errors, touched, handleSubmit } = useValidatedForm({
+  schema: MySchema,
+  initialValues: defaultValues,
+  onSubmit: handleFormSubmit,
+})
+```
+
+#### 3. API Response Standardization
+All API routes use standardized response helpers:
+
+```typescript
+// Success
+return apiSuccess(data, 200, requestId)
+
+// Error
+return apiError('Error message', 'ERROR_CODE', 500, requestId)
+```
+
+### Directory Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── api/               # API route handlers
+│   └── ...
+├── components/            # React components
+│   ├── ui/               # shadcn/ui base components
+│   └── ...
+├── lib/                   # Core utilities and services
+│   ├── supabase/         # Database clients
+│   ├── validation/       # Validation schemas
+│   ├── types/            # TypeScript type definitions
+│   └── services/         # Business logic services
+└── middleware.ts          # Next.js middleware
+```
+
+## Critical Development Rules
+
+### Database Schema Verification (MANDATORY)
+**At the start of ANY new conversation**, verify the current database schema before making code changes:
+
+1. Check `supabase/migrations/` for latest migrations
+2. Review database types file for current schema
+3. If types seem outdated, regenerate with Supabase CLI
+4. Verify schema understanding with user if anything seems unclear
+
+**Common sync issues**: Code may reference fields that don't exist, or types may be stale. Always verify before assuming schema structure from old context.
+
+### TypeScript Strict Mode
+This project uses **stricter-than-normal** TypeScript settings:
+- `exactOptionalPropertyTypes: true` - Optional properties cannot be set to `undefined`
+- `noUncheckedIndexedAccess: true` - Array access returns `T | undefined`
+
+```typescript
+// ❌ WRONG - undefined not assignable to optional property
+interface Options { specialty?: string }
+const opts: Options = { specialty: value || undefined }
+
+// ✅ CORRECT - conditional property assignment
+const opts: Options = {}
+if (value) opts.specialty = value
+
+// ❌ WRONG - array access without null check
+const parts = name.split(' ')
+const first = parts[0] // Error: could be undefined
+
+// ✅ CORRECT - proper null handling
+const first = parts[0] || ''
+```
+
+### Authentication & Security
+- Clerk handles authentication, Supabase stores user data
+- All database tables use RLS policies referencing `auth.uid()` from Clerk JWT
+- Admin routes protected appropriately
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` on client side
+- Secret scanning with Gitleaks pre-commit hook
+
+### Development Workflow
+1. **Always ask permission** before code changes
+2. **Test locally first** - never push broken code to production
+3. **Run `npm run build`** before requesting deployment approval
+4. **Use feature branches** for non-trivial work
+
+### Git Conventions
+- **Branch naming**: `feature/description`, `fix/description`, `refactor/description`
+- **Commit messages**: Descriptive, reference issues when applicable
+- **Never commit**: `.env.local`, `node_modules`, `.next`, build artifacts, secrets
+- **Secret scanning**: Gitleaks pre-commit hook prevents committing secrets
+  - If blocked, remove secret → add to `.env.local` → commit again
+  - Only bypass with `--no-verify` if false positive (document why)
+
+### Enhanced Logger Usage
+
+All logging uses `src/lib/utils/logger-enhanced.ts`:
+
+```typescript
+import { logger } from '@/lib/utils/logger-enhanced'
+
+// Error logging
+logger.error('Operation failed', {
+  context: 'Category:Service',
+  error: error as Error,  // ALWAYS cast to Error
+})
+
+// Info logging
+logger.info('Action completed', {
+  context: 'Category:Service',
+})
+```
+
+**Never use `console.log/warn/error` directly** - always use logger with context.
+
+### UI/UX Standards
+- Icons: `h-4 w-4` for buttons, `h-5 w-5` for titles (Lucide React only)
+- Delete actions: Red X icon with `variant="ghost"` (never outline)
+- Always escape apostrophes in JSX strings: `\'` not `&apos;`
+- No emojis in code
+
+## Testing & Deployment
+
+### Pre-Deployment Checklist
+- [ ] `npm run validate-production` passes
+- [ ] Test in localhost:3000
+- [ ] Get explicit user approval
+- [ ] Push to main (Vercel auto-deploys)
+- [ ] Verify production deployment
+
+## Troubleshooting
+
+### Port 3000 Already in Use
+```bash
+lsof -ti:3000 | xargs kill -9
+npm run dev
+```
+
+### TypeScript Errors After Schema Change
+```bash
+npx supabase gen types typescript --project-id [PROJECT_ID] > src/lib/types/database.ts
+npm run type-check
+```
+
+### Stale Build Cache
+```bash
+rm -rf .next
+npm run build
+```

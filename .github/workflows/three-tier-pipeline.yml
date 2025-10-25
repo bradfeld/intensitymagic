@@ -1,0 +1,149 @@
+# ============================================================================
+# Three-Tier Deployment Pipeline - GitHub Actions Workflow
+# ============================================================================
+# Save to: .github/workflows/three-tier-pipeline.yml
+#
+# This workflow enforces the Local → Preview → Production pipeline:
+# - quality-check: Runs on all PRs (type-check, lint, build)
+# - production-gate: Enforces preview→main workflow and health checks
+
+name: Three-Tier Pipeline
+
+on:
+  pull_request:
+    branches: [preview, main]
+  push:
+    branches: [preview, main]
+
+env:
+  # Dummy values for CI builds - actual values come from Vercel at runtime
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_dummy_for_ci_build_only
+  CLERK_SECRET_KEY: sk_test_dummy_for_ci_build_only
+  NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy_anon_key_for_ci_build_only
+  SUPABASE_SERVICE_ROLE_KEY: dummy_service_role_key_for_ci_build_only
+  OPENAI_API_KEY: sk-dummy-openai-key-for-ci-build-only
+
+jobs:
+  # ============================================================================
+  # Quality Check - Runs on all PRs and pushes
+  # ============================================================================
+  quality-check:
+    name: Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          TAILWIND_DISABLE_OXIDE: 1
+
+  # ============================================================================
+  # Production Gate - Enforces preview→main workflow
+  # ============================================================================
+  production-gate:
+    name: Production Gate
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'main' || github.ref == 'refs/heads/main'
+    needs: quality-check
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js for config reading
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Load deployment configuration
+        id: config
+        run: |
+          # Read deployment config
+          PREVIEW_BRANCH=$(node -p "require('./.deployment-config.json').environments.preview.branch")
+          PREVIEW_URL=$(node -p "require('./.deployment-config.json').vercel.previewUrl")
+
+          echo "preview_branch=$PREVIEW_BRANCH" >> $GITHUB_OUTPUT
+          echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+
+      - name: Verify source is preview branch
+        if: github.event_name == 'pull_request'
+        run: |
+          EXPECTED_BRANCH="${{ steps.config.outputs.preview_branch }}"
+
+          if [[ "${{ github.head_ref }}" != "$EXPECTED_BRANCH" ]]; then
+            echo "❌ ERROR: Production deploys must come from $EXPECTED_BRANCH branch"
+            echo "Source branch: ${{ github.head_ref }}"
+            echo ""
+            echo "Workflow:"
+            echo "  1. Merge your changes to $EXPECTED_BRANCH first"
+            echo "  2. Test in Preview environment"
+            echo "  3. Create PR from $EXPECTED_BRANCH → main"
+            exit 1
+          fi
+          echo "✅ Source branch is $EXPECTED_BRANCH"
+
+      - name: Check Preview environment health
+        if: github.event_name == 'pull_request'
+        run: |
+          PREVIEW_URL="${{ steps.config.outputs.preview_url }}"
+
+          echo "🏥 Verifying Preview environment is healthy..."
+          echo "URL: $PREVIEW_URL"
+
+          if curl -f "$PREVIEW_URL/api/health" --max-time 30 2>/dev/null; then
+            echo "✅ Preview environment is healthy"
+          else
+            echo "❌ ERROR: Preview health check failed"
+            echo ""
+            echo "Preview must be healthy before deploying to Production"
+            echo "URL: $PREVIEW_URL"
+            exit 1
+          fi
+
+      - name: Production deployment checklist
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "📋 Production Deployment Checklist"
+          echo "════════════════════════════════════════════"
+          echo "Before merging this PR, verify:"
+          echo ""
+          echo "  ✓ Preview thoroughly tested"
+          echo "  ✓ User testing complete"
+          echo "  ✓ No critical bugs in logs"
+          echo "  ✓ Database migrations tested"
+          echo "  ✓ Performance acceptable"
+          echo ""
+          echo "Post-deployment:"
+          echo "  • Run: npm run verify:production"
+          echo "  • Monitor logs for 15 minutes"
+          echo "  • Check error rates in Vercel dashboard"
+          echo "════════════════════════════════════════════"
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+# This workflow reads from .deployment-config.json for:
+# - Preview branch name
+# - Preview URL for health checks
+#
+# Branch protection rules should require:
+# - quality-check: All branches
+# - production-gate: Main branch only
+# ============================================================================

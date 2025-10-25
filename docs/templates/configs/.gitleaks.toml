@@ -1,0 +1,98 @@
+# Gitleaks Configuration for MedicareMagic
+# https://github.com/gitleaks/gitleaks
+
+title = "Gitleaks Configuration for MedicareMagic"
+
+# Extend default gitleaks config
+[extend]
+useDefault = true
+
+# Custom rules for MedicareMagic-specific secrets
+[[rules]]
+id = "supabase-anon-key"
+description = "Supabase Anonymous Key"
+regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'''
+tags = ["key", "supabase"]
+
+[[rules]]
+id = "supabase-service-role"
+description = "Supabase Service Role Key"
+regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'''
+tags = ["key", "supabase", "service-role"]
+
+[[rules]]
+id = "supabase-secret-key"
+description = "Supabase Secret API Key"
+regex = '''sb_secret_[A-Za-z0-9_-]{27,}'''
+tags = ["key", "supabase", "secret"]
+
+[[rules]]
+id = "supabase-publishable-key"
+description = "Supabase Publishable Key"
+regex = '''sb_publishable_[A-Za-z0-9_-]{27,}'''
+tags = ["key", "supabase", "publishable"]
+
+[[rules]]
+id = "clerk-secret-key"
+description = "Clerk Secret Key"
+regex = '''sk_(test|live)_[A-Za-z0-9]{48,}'''
+tags = ["key", "clerk"]
+
+[[rules]]
+id = "clerk-publishable-key"
+description = "Clerk Publishable Key"
+regex = '''pk_(test|live)_[A-Za-z0-9]{48,}'''
+tags = ["key", "clerk"]
+
+[[rules]]
+id = "clerk-webhook-secret"
+description = "Clerk Webhook Secret"
+regex = '''whsec_[A-Za-z0-9]{32,}'''
+tags = ["key", "clerk", "webhook"]
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[A-Za-z0-9]{48,}'''
+tags = ["key", "openai"]
+
+[[rules]]
+id = "linear-token"
+description = "Linear API Token"
+regex = '''lin_api_[A-Za-z0-9]{40,}'''
+tags = ["key", "linear"]
+
+# Allowlist paths that are safe to commit
+[allowlist]
+paths = [
+  '''.gitleaks.toml''',
+  '''env-template.txt''',
+  '''.env.production.example''',
+  '''.env.example''',
+  '''node_modules/''',
+  '''package-lock.json''',
+  '''pnpm-lock.yaml''',
+  '''yarn.lock''',
+  '''docs/''',
+  '''.next/''',
+  '''.husky/''',
+  '''temp/'''
+]
+
+# Allowlist specific placeholder patterns that look like secrets but aren't
+regexes = [
+  '''(your_|test_|example_|placeholder_|sk_test_your_|pk_test_your_)''',
+  '''sk-your_openai_api_key''',
+  '''sb_(secret|publishable)_[X]{10,}''',
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.\.\.'''
+]
+
+# Stop words that indicate false positives
+stopwords = [
+  "example",
+  "placeholder",
+  "your_",
+  "test_",
+  "demo_",
+  "sample_"
+]

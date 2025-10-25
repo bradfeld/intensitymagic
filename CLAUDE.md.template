@@ -1,0 +1,188 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code when working with code in this repository. For universal coding standards, see `~/.claude/GLOBAL_STANDARDS.md`. For detailed implementation patterns, see directory-specific CLAUDE.md files and `docs/standards/`.
+
+## Project Overview
+
+MedicareMagic is an AI-powered Medicare plan recommendation platform that helps users find and compare Medicare plans based on their specific health needs, medications, and providers. The platform combines OpenAI's GPT-4 with real-time Medicare API data to provide personalized recommendations and cost analysis.
+
+## Commands
+
+### Development
+```bash
+npm run dev                     # Start dev server on localhost:3000
+npm run restart                 # Clean restart dev server
+npm run type-check:watch        # Real-time TypeScript error detection
+```
+
+### Testing & Validation
+```bash
+npm run validate-production     # Complete validation (type-check + lint + build)
+npm run build                   # Build for production (MUST pass before deploying)
+npm run test                    # Run Node.js tests
+npm run test:e2e                # Run Playwright tests
+```
+
+### Code Quality
+```bash
+npm run lint                    # ESLint validation
+npm run format                  # Format with Prettier
+```
+
+### Linear Integration
+```bash
+npm run linear:complete         # Mark issue complete
+```
+
+## Core Workflow Principles
+
+**See `~/.claude/GLOBAL_STANDARDS.md`** for universal principles (permission protocols, planning-first development, git conventions, code quality).
+
+**Project-Specific**:
+- Use TodoWrite tool to track implementation progress
+- Reference Linear for strategic task tracking
+- Create "MASTER PLAN" summaries for complex multi-step projects
+
+## Database Schema Awareness (MANDATORY)
+
+**At the start of ANY new conversation**, verify the current database schema:
+
+1. Read `supabase/migrations/` for latest migrations
+2. Review `docs/db/CURRENT_SCHEMA_BASELINE_2025.md` (authoritative - 16 tables)
+3. If types seem outdated, regenerate with Supabase CLI
+4. Verify schema understanding with user if unclear
+
+**Common issue**: Code may reference fields that don't exist, or types may be stale. Always verify before assuming schema structure from old context.
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router only)
+- **Authentication**: Clerk with Supabase JWT integration
+- **Database**: Supabase PostgreSQL with RLS
+- **AI**: OpenAI GPT-4
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Deployment**: Vercel
+
+## Architecture Quick Reference
+
+**See `docs/UNIFIED_DEVELOPMENT_STANDARDS.md`** for comprehensive patterns.
+
+### Key Patterns
+- **Supabase**: Always use `SupabaseClients.authenticated()` factory, never `createClient()` directly → See `src/lib/CLAUDE.md`
+- **Validation**: Use `useValidatedForm` with Zod schemas → See `src/lib/CLAUDE.md`
+- **API Responses**: Use `apiSuccess()` and `apiError()` helpers → See `docs/standards/API_STANDARDS.md`
+- **Logging**: Use `logger.error/warn/info()` with context prefixes → See `src/lib/CLAUDE.md`
+- **TypeScript**: Strict mode with `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` → See `docs/standards/TYPESCRIPT_STRICT_MODE.md`
+
+## Directory Structure & Context
+
+```
+src/
+├── app/              # Next.js App Router → See src/app/CLAUDE.md
+├── components/       # UI components → See src/components/CLAUDE.md
+└── lib/              # Core utilities → See src/lib/CLAUDE.md
+    ├── supabase/     # Database clients (use factory pattern)
+    ├── validation/   # Zod schemas
+    ├── types/        # TypeScript definitions
+    └── services/     # Business logic
+```
+
+**Read the directory-specific CLAUDE.md file when working in that area.**
+
+## Critical Development Rules
+
+### Localhost-First Deployment Workflow (MANDATORY)
+
+1. **Debug & Fix**: Fix ALL localhost errors first
+2. **Local Verification**: Verify functionality at localhost:3000
+3. **User Demo**: Show working localhost to user
+4. **Request Permission**: Ask explicit permission for production deployment
+5. **Wait for Approval**: Wait for "yes", "proceed", or "approved"
+6. **Deploy**: Push to main (Vercel auto-deploys)
+7. **Verify**: Check deployment status (wait 60-90 seconds)
+8. **Test Production**: Verify production works
+9. **Complete**: Update Linear task
+
+**Never push to production with localhost errors.**
+
+### Pre-Deployment Checklist
+
+- [ ] `npm run validate-production` passes
+- [ ] Manual testing in localhost:3000 complete
+- [ ] User approval obtained
+- [ ] Production deployment verified
+
+### Git & Deployment
+
+- **Branch naming**: `feature/description`, `fix/description`, `refactor/description`
+- **Secret scanning**: Gitleaks pre-commit hook prevents committing secrets
+- **Never commit**: `.env.local`, secrets, build artifacts
+- See `~/.claude/GLOBAL_STANDARDS.md` for git conventions
+
+## Medicare Domain Specifics
+
+- Plans searched by ZIP code and year
+- Provider validation uses NPI (National Provider Identifier)
+- Medication coverage via formulary APIs
+- Cost analysis uses Medicare Fee Schedule data
+
+## Common Pitfalls
+
+1. **Hardcoded localhost URLs** - Use `request.url` origin
+2. **Direct Supabase client creation** - Use SupabaseClients factory
+3. **Missing type narrowing** - Array access needs null checks
+4. **Forgotten build validation** - Always `npm run build` before deploying
+5. **Stale schema assumptions** - Verify schema at conversation start
+
+## Troubleshooting
+
+**Port 3000 in use**: `lsof -ti:3000 | xargs kill -9 && npm run dev`
+**TypeScript errors after schema change**: Regenerate types with Supabase CLI
+**Stale build**: `rm -rf .next && npm run build`
+
+For detailed troubleshooting, see `docs/TROUBLESHOOTING.md` (if exists) or relevant standard file.
+
+## Key Documentation
+
+**Implementation Details**:
+- `src/app/CLAUDE.md` - Next.js App Router patterns
+- `src/lib/CLAUDE.md` - Supabase, validation, logger usage
+- `src/components/CLAUDE.md` - UI/UX component standards
+- `docs/UNIFIED_DEVELOPMENT_STANDARDS.md` - Comprehensive patterns
+
+**Standards** (in `docs/standards/`):
+- `TYPESCRIPT_STRICT_MODE.md` - Strict TypeScript configuration
+- `SECURITY_BEST_PRACTICES.md` - Security guidelines
+- `API_STANDARDS.md` - API patterns
+- `DATABASE_PATTERNS.md` - Database best practices
+- `LOGGING_GUIDE.md` - Logging standards
+- `VALIDATION_PATTERNS.md` - Form validation
+- `TESTING_STRATEGY.md` - Testing approach
+
+**Project Context**:
+- `docs/README.md` - Tech stack details
+- `docs/db/CURRENT_SCHEMA_BASELINE_2025.md` - Database schema
+- `docs/TEMPLATE_USAGE.md` - Using as template
+
+## Slash Commands
+
+- `/validate` - Run production validation
+- `/schema-check` - Verify database schema
+- `/deploy` - Full deployment workflow
+- `/test-all` - Run all tests
+- `/clean` - Clean build and restart
+- `/migration` - Database migration helper
+- `/check` - Pre-commit checks
+
+## Agent Usage
+
+**Launch agents for**:
+- **Code review** - After completing features (code-reviewer agent)
+- **Codebase exploration** - Finding patterns across many files (Explore agent)
+- **Complex analysis** - Multi-file refactoring impact (general-purpose agent)
+
+**Example**: After implementing a feature, launch code-reviewer agent to catch issues before commit.
+
+---
+
+**Remember**: This is the high-level guide. For implementation details, always check the directory-specific CLAUDE.md file and relevant docs/standards/ files.

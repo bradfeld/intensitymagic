@@ -1,0 +1,43 @@
+name: StackHawk Scan (Manual Prod)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to scan'
+        required: false
+        default: 'Production'
+
+jobs:
+  hawkscan-prod:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      HAWK_ENVIRONMENT: Production
+    steps:
+      - uses: actions/checkout@v5
+      - name: Pull latest HawkScan image
+        run: docker pull stackhawk/hawkscan:latest
+      - name: Run StackHawk (Production)
+        env:
+          HAWK_API_KEY: ${{ secrets.HAWK_API_KEY }}
+          HAWK_APPLICATION_ID: ${{ secrets.HAWK_APPLICATION_ID }}
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/hawk:rw \
+            -v ${{ github.workspace }}/.hawk:/root/.hawk \
+            -e API_KEY=${{ secrets.HAWK_API_KEY }} \
+            -e HAWK_APPLICATION_ID=${{ secrets.HAWK_APPLICATION_ID }} \
+            -e HAWK_ENVIRONMENT=${{ env.HAWK_ENVIRONMENT }} \
+            -t stackhawk/hawkscan:latest stackhawk-prod.yml
+      - name: Upload HawkScan JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hawkscan-json-prod
+          path: .hawk/logs/hawkscan.log

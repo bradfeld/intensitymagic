@@ -1,0 +1,157 @@
+name: 🎯 Manual Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+      skip_tests:
+        description: 'Skip quality checks (emergency only)'
+        required: false
+        default: false
+        type: boolean
+      git_ref:
+        description: 'Git reference to deploy (branch, tag, or commit)'
+        required: false
+        default: 'main'
+        type: string
+
+env:
+  NODE_VERSION: '20'
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  # Quality checks (skippable for emergencies)
+  quality-check:
+    name: 🔍 Quality Check
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🔍 TypeScript check
+        run: npm run type-check
+
+      - name: 🧹 ESLint check
+        run: npm run lint
+
+      - name: 🏗️ Build test
+        run: npm run build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+  # Manual deployment
+  deploy:
+    name: 🚀 Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [quality-check]
+    if: always() && (needs.quality-check.result == 'success' || inputs.skip_tests)
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Install Vercel CLI
+        run: npm install --global vercel@canary
+
+      - name: 🔗 Pull Vercel Environment Information
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          else
+            vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+          fi
+
+      - name: 🏗️ Build Project Artifacts
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          else
+            vercel build --token=${{ secrets.VERCEL_TOKEN }}
+          fi
+
+      - name: 🚀 Deploy to Vercel
+        id: deploy
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            echo "deployment_url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})" >> $GITHUB_OUTPUT
+          else
+            echo "deployment_url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🔍 Post-deployment verification
+        if: ${{ inputs.environment == 'production' }}
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+
+          echo "Testing deployment health..."
+          if curl -f "${{ steps.deploy.outputs.deployment_url }}/api/system/health" --max-time 30; then
+            echo "✅ Health check passed"
+          else
+            echo "⚠️ Health check failed - deployment may still be starting"
+          fi
+
+      - name: 📝 Create deployment summary
+        run: |
+          echo "## 🚀 Manual Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Git Reference:** ${{ inputs.git_ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment URL:** ${{ steps.deploy.outputs.deployment_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tests Skipped:** ${{ inputs.skip_tests }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed at:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ inputs.skip_tests }}" = "true" ]; then
+            echo "⚠️ **Warning:** Quality checks were skipped for this deployment." >> $GITHUB_STEP_SUMMARY
+            echo "Please verify the deployment manually and run tests as soon as possible." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ All quality checks passed before deployment." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 🔔 Deployment notification
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Deployment to ${{ inputs.environment }} successful!"
+            echo "🔗 URL: ${{ steps.deploy.outputs.deployment_url }}"
+          else
+            echo "❌ Deployment to ${{ inputs.environment }} failed!"
+            echo "Check the logs above for details."
+            exit 1
+          fi

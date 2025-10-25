@@ -1,0 +1,58 @@
+#!/bin/sh
+# Three-Tier Pipeline: Pre-push protection
+
+# Get current branch
+BRANCH=$(git branch --show-current)
+
+# Get the remote branch being pushed to
+while read local_ref local_sha remote_ref remote_sha; do
+  REMOTE_BRANCH=$(echo "$remote_ref" | sed 's/refs\/heads\///')
+
+  # ════════════════════════════════════════════════════════
+  # BLOCK: Direct pushes to main
+  # ════════════════════════════════════════════════════════
+  if [[ "$REMOTE_BRANCH" == "main" ]]; then
+    echo ""
+    echo "❌ ERROR: Direct pushes to main are not allowed"
+    echo ""
+    echo "The three-tier deployment pipeline requires:"
+    echo "  1. Develop on feature/* or preview branch"
+    echo "  2. Push to preview"
+    echo "  3. Test in Preview environment"
+    echo "  4. Create PR from preview → main"
+    echo "  5. Merge PR (triggers Production deployment)"
+    echo ""
+    echo "To deploy to Production:"
+    echo "  git checkout preview"
+    echo "  git merge $BRANCH"
+    echo "  npm run deploy:production"
+    echo ""
+    exit 1
+  fi
+
+  # ════════════════════════════════════════════════════════
+  # WARN: Pushing to preview from feature branch
+  # ════════════════════════════════════════════════════════
+  if [[ "$REMOTE_BRANCH" == "preview" && "$BRANCH" =~ ^feature/ ]]; then
+    echo ""
+    echo "⚠️  WARNING: Pushing feature branch to preview"
+    echo ""
+    echo "Current branch: $BRANCH"
+    echo "Target: preview"
+    echo ""
+    echo "This will trigger a Preview deployment."
+    echo "Consider creating a PR to preview instead:"
+    echo "  git push origin $BRANCH"
+    echo "  gh pr create --base preview --fill"
+    echo ""
+    read -p "Continue with direct push? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      echo "Push cancelled"
+      exit 1
+    fi
+  fi
+done
+
+# All checks passed
+exit 0

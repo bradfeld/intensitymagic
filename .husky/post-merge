@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# Auto-sync global config files after merge/pull
+# If GLOBAL_STANDARDS.md or mcp.json were updated, sync to ~/.claude/
+
+CHANGED_FILES=$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD 2>/dev/null)
+
+# Check if any global config files were changed in the merge
+if echo "$CHANGED_FILES" | grep -q "\.claude/GLOBAL_STANDARDS\.md\|\.claude/mcp\.json"; then
+  echo ""
+  echo "📋 Global config files updated from remote - syncing to ~/.claude/"
+
+  # Copy to global ~/.claude/ directory
+  if echo "$CHANGED_FILES" | grep -q "\.claude/GLOBAL_STANDARDS\.md"; then
+    if [ -f .claude/GLOBAL_STANDARDS.md ]; then
+      cp .claude/GLOBAL_STANDARDS.md ~/.claude/GLOBAL_STANDARDS.md
+      echo "  ✅ Synced GLOBAL_STANDARDS.md to ~/.claude/"
+    fi
+  fi
+
+  if echo "$CHANGED_FILES" | grep -q "\.claude/mcp\.json"; then
+    if [ -f .claude/mcp.json ]; then
+      cp .claude/mcp.json ~/.claude/mcp.json
+      echo "  ✅ Synced mcp.json to ~/.claude/"
+    fi
+  fi
+
+  echo "  ✨ Global configs updated!"
+  echo ""
+fi

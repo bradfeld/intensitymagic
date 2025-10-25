@@ -1,0 +1,88 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env*.local
+.env
+.env.production
+.env.production.*
+.env.*.local
+temp/.env.*
+
+# Exception: Allow example environment files (no secrets)
+!.env.production.example
+!.env.example
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cursor (deprecated - using Claude Code)
+.cursor/
+.cursorrules
+
+# Claude Code (local session data - don't commit)
+.claude/settings.local.json
+.claude/changelog.txt
+.claude/diffs.txt
+.claude/session-env/
+.claude/*.local.*
+
+# Claude Code (commit these for team)
+# .claude/settings.json - Team settings
+# .claude/commands/ - Slash commands
+# .claude/HOOKS_SETUP.md - Documentation
+
+# OS
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Cache
+.npm
+.eslintcache
+.cache/
+
+# Backup files
+*.backup
+*.bak
+build*.log
+*.log
+
+# Bundle analysis (MED-249)
+metrics/
+.env.vercel.temp
+.env.production.temp

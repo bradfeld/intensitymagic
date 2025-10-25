@@ -1,0 +1,24 @@
+{
+  "projectName": "intensitymagic",
+  "github": {
+    "owner": "bradfeld",
+    "repo": "intensitymagic"
+  },
+  "vercel": {
+    "projectName": "intensitymagic",
+    "previewUrl": "https://intensitymagic-git-preview-intensity-magic.vercel.app",
+    "productionUrl": "https://intensitymagic.com"
+  },
+  "environments": {
+    "preview": {
+      "branch": "preview",
+      "supabaseProjectRef": "YOUR_PREVIEW_PROJECT_REF",
+      "clerkInstance": "preview"
+    },
+    "production": {
+      "branch": "main",
+      "supabaseProjectRef": "YOUR_PRODUCTION_PROJECT_REF",
+      "clerkInstance": "production"
+    }
+  }
+}
