@@ -8,5 +8,9 @@
       "main": true,
       "preview": true
     }
+  },
+  "github": {
+    "enabled": true,
+    "autoJobCancelation": true
   }
 }
