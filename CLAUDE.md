@@ -4,7 +4,9 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project Overview
 
-{{PROJECT_DESCRIPTION}}
+**IntensityMagic** is a simple landing page for Intensity Magic company. This project uses the MedicareMagic template but is configured as a lightweight landing page rather than a full SaaS application.
+
+**Note**: Since this is a landing page, many template features (Clerk authentication, Supabase database, OpenAI integration) are optional and may not be needed. You can remove these dependencies if they're not required.
 
 ## Commands
 
@@ -144,8 +146,6 @@ npm run verify:production   # Verify after merge
 - **Secret scanning**: Gitleaks pre-commit hook prevents committing secrets
 - **Never commit**: `.env.local`, secrets, build artifacts
 - See `~/.claude/GLOBAL_STANDARDS.md` for git conventions
-
-{{DOMAIN_SPECIFICS}}
 
 ## Common Pitfalls
 
