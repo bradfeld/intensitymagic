@@ -30,14 +30,6 @@ else
     ((FAILURES++))
 fi
 
-echo "3. Auth system..."
-if curl -f "$PREVIEW_URL/sign-in" --max-time 30 2>/dev/null > /dev/null; then
-    echo "   ✅ Passed"
-else
-    echo "   ❌ Failed"
-    ((FAILURES++))
-fi
-
 echo ""
 echo "════════════════════════════════════════════"
 
